@@ -37,6 +37,12 @@ gdp_long = load_gdp_long()
 # Metric options shared by several tabs — GDP plus the 12 prosperity dims.
 METRIC_OPTIONS = ["gdp_2023", "prosperity_score", *PROSPERITY_SCORE_COLS]
 
+# Metrics where a HIGHER value means a BETTER outcome. Only GDP works that way.
+# Every prosperity score is a *ranking* (1 = best, 167 = worst), so for those
+# metrics a LOWER value is better — we use this set to decide whether "Top N"
+# means nlargest (for GDP) or nsmallest (for prosperity rankings).
+HIGHER_IS_BETTER = {"gdp_2023"}
+
 
 # ---------------------------------------------------------------------------
 # Helper functions used by the tabs below.
@@ -116,25 +122,51 @@ with tab_topn:
     # Top-N countries by selected metric.
     # Query: "What are the top N countries by [metric]?"
     # [VIZ1] horizontal bar chart with title, custom colors, axis labels.
-    st.subheader(f"Top {top_n} countries by {metric.replace('_', ' ')}")
+    #
+    # Direction-aware: for GDP we want the LARGEST values; for prosperity
+    # rankings (where 1 = best, 167 = worst) we want the SMALLEST values.
+    # Using the wrong direction would silently surface the worst-performing
+    # countries when the user asked for the best.
+    is_higher_better = metric in HIGHER_IS_BETTER
+    direction_label = "highest" if is_higher_better else "best-ranked (lowest rank number)"
+
+    st.subheader(f"Top {top_n} countries by {metric.replace('_', ' ')} — {direction_label}")
 
     # [DA4] filter by one condition — drop rows where the chosen metric is null.
     metric_df = merged.dropna(subset=[metric])
-    # Same helper as the snapshot above, this time with the slider's n
-    # overriding the default.
-    top_view = top_n_countries(metric_df, metric, n=top_n)
-    # [DA2] sort ascending so matplotlib draws the largest bar on top.
-    top_view = top_view.sort_values(metric, ascending=True)
+
+    if is_higher_better:
+        # GDP path: helper uses nlargest, so this satisfies the [PY1] "called
+        # with explicit n (no default)" pattern.
+        top_view = top_n_countries(metric_df, metric, n=top_n)
+    else:
+        # Ranking path: nsmallest gives us the BEST-ranked countries
+        # (rank 1 is the best country in the dataset).
+        # [DA3] find smallest values of a column.
+        top_view = metric_df.nsmallest(top_n, metric)
+
+    # [DA2] sort so the BEST country sits at the top of the bar chart in
+    # both directions: ascending=True for GDP (largest bar on top), and
+    # ascending=False for rankings (lowest rank number = best, on top).
+    top_view = top_view.sort_values(metric, ascending=is_higher_better)
 
     fig_bar, ax_bar = plt.subplots(figsize=(8, max(4, 0.3 * top_n)))
     ax_bar.barh(top_view["Country Name"], top_view[metric], color="#2E86AB")
     ax_bar.set_xlabel(metric.replace("_", " ").title())
     ax_bar.set_ylabel("Country")
-    ax_bar.set_title(f"Top {top_n} countries by {metric.replace('_', ' ')}")
+    ax_bar.set_title(
+        f"Top {top_n} by {metric.replace('_', ' ')} — {direction_label}"
+    )
     ax_bar.grid(axis="x", linestyle="--", alpha=0.3)
     fig_bar.tight_layout()
     st.pyplot(fig_bar)
     plt.close(fig_bar)
+    if not is_higher_better:
+        st.caption(
+            "Prosperity scores are *rankings* (1 = best). The chart shows the "
+            "countries with the **lowest rank numbers** for this dimension — "
+            "i.e. the best-performing countries."
+        )
 
 # ===========================================================================
 # Tab: GDP Over Time — line chart of selected countries
@@ -200,15 +232,31 @@ with tab_map:
     map_df = map_df.rename(columns={"latitude": "lat", "longitude": "lon"})
     metric_min = map_df[metric].min()
     metric_max = map_df[metric].max()
-    if metric_max > metric_min:
+
+    # Direction-aware bubble sizing: bigger circle should always mean
+    # "better-performing country", regardless of whether the metric is
+    # higher-is-better (GDP) or lower-is-better (prosperity rankings).
+    if metric in HIGHER_IS_BETTER:
+        bubble_basis = map_df[metric]                    # bigger value → bigger bubble
+    else:
+        bubble_basis = -map_df[metric]                   # invert so rank 1 → bigger bubble
+
+    basis_min = bubble_basis.min()
+    basis_max = bubble_basis.max()
+    if basis_max > basis_min:
         map_df["size"] = (
-            20_000 + 480_000 * (map_df[metric] - metric_min) / (metric_max - metric_min)
+            20_000 + 480_000 * (bubble_basis - basis_min) / (basis_max - basis_min)
         )
     else:
         map_df["size"] = 100_000
 
     st.map(map_df, latitude="lat", longitude="lon", size="size", color="#2E86AB")
+    direction_text = (
+        "higher value" if metric in HIGHER_IS_BETTER
+        else "better rank (lower number)"
+    )
     st.caption(
-        f"Each circle is a country centroid; bubble area scales with **{metric.replace('_', ' ')}**. "
-        f"Range across {len(map_df)} countries: {metric_min:,.0f} – {metric_max:,.0f}."
+        f"Bubble area scales with **{metric.replace('_', ' ')}** — bigger circle "
+        f"= **{direction_text}**. Value range across {len(map_df)} countries: "
+        f"{metric_min:,.0f} – {metric_max:,.0f}."
     )
