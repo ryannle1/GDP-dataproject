@@ -1,7 +1,7 @@
 """
 Name:        Ryan Le, Mitchel Igolimah, Ashley Shambare
-Data:        Global Prosperity Index (Legatum) + World Bank GDP (1960–2023)
-URL:         <Deepnote app URL — fill in after redeploy>
+Data:        Global Prosperity Index (Legatum)
+URL:         https://gdp-dataproject-jmyuywwxxd6qmb3ujgktby.streamlit.app
 
 Description:
     This program is an interactive Streamlit application that explores the
