@@ -1,0 +1,8 @@
+statsmodels>=0.14.6
+streamlit>=1.40
+scikit-learn>=1.5
+altair>=6.1
+matplotlib
+seaborn
+pandas
+numpy
