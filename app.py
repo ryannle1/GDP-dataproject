@@ -1,6 +1,6 @@
 """
 Name:        Ryan Le, Mitchel Igolimah, Ashley Shambare
-Data:        Global Prosperity Index (Legatum)
+Data:        Global Prosperity Index (Legatum) + World Bank GDP (1960–2023)
 URL:         https://gdp-dataproject-jmyuywwxxd6qmb3ujgktby.streamlit.app
 
 Description:
@@ -43,10 +43,10 @@ from lib.data import build_merged, load_gdp_long
 # Page setup — landing page Streamlit serves at "/". The two analysis pages
 # live under pages/ and Streamlit auto-discovers them into the sidebar nav.
 # ---------------------------------------------------------------------------
-st.set_page_config(page_title="CS 602 Project 3", layout="wide")
+st.set_page_config(page_title="CS 602 Project", layout="wide")
 
 st.title("Global Prosperity & Economic Outcomes")
-st.caption("CS 602 — Project 3 · Ryan Le, Mitchel Igolimah, Ashley Shambare")
+st.caption("CS 602 — Project · Ryan Le, Mitchel Igolimah, Ashley Shambare")
 
 # ---------------------------------------------------------------------------
 # Project overview — one-paragraph intro framing the single coherent story.
