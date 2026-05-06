@@ -23,7 +23,7 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 import streamlit as st
 
-from lib.data import PROSPERITY_SCORE_COLS, build_merged
+from lib.data import HIGHER_IS_BETTER, PROSPERITY_SCORE_COLS, build_merged
 from lib.models import fit_prosperity_ols
 
 # ---------------------------------------------------------------------------
@@ -167,6 +167,12 @@ with tab_map:
     }
     map_labels["gdp_2023"] = "GDP 2023 (USD)"
 
+    # Direction-aware color scale: prosperity scores are rankings (1 = best),
+    # so for those metrics we reverse the Viridis scale (Viridis_r) so that
+    # bright colors always represent better-performing countries — regardless
+    # of whether the metric is higher-is-better (GDP) or lower-is-better (rank).
+    map_colorscale = "Viridis" if map_metric in HIGHER_IS_BETTER else "Viridis_r"
+
     fig_map = px.choropleth(
         filtered,
         locations="Country Code",
@@ -174,11 +180,16 @@ with tab_map:
         hover_name="Country Name",
         hover_data={"Country Code": False, "Regime_Group": True, map_metric: ":,.2f"},
         labels=map_labels,
-        color_continuous_scale="Viridis",
+        color_continuous_scale=map_colorscale,
         projection="natural earth",
     )
     fig_map.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=500)
     st.plotly_chart(fig_map, use_container_width=True)
+    if map_metric not in HIGHER_IS_BETTER:
+        st.caption(
+            "Bright (yellow) = better-performing country, dark (purple) = worse. "
+            "Hover values are the original ranks (1 = best, 167 = worst)."
+        )
 
 # ===========================================================================
 # Tab: Regression — scatter plot + OLS summary

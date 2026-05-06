@@ -17,6 +17,7 @@ import pandas as pd
 import streamlit as st
 
 from lib.data import (
+    HIGHER_IS_BETTER,
     PROSPERITY_SCORE_COLS,
     build_merged,
     load_country_centroids,
@@ -36,12 +37,6 @@ gdp_long = load_gdp_long()
 
 # Metric options shared by several tabs — GDP plus the 12 prosperity dims.
 METRIC_OPTIONS = ["gdp_2023", "prosperity_score", *PROSPERITY_SCORE_COLS]
-
-# Metrics where a HIGHER value means a BETTER outcome. Only GDP works that way.
-# Every prosperity score is a *ranking* (1 = best, 167 = worst), so for those
-# metrics a LOWER value is better — we use this set to decide whether "Top N"
-# means nlargest (for GDP) or nsmallest (for prosperity rankings).
-HIGHER_IS_BETTER = {"gdp_2023"}
 
 
 # ---------------------------------------------------------------------------

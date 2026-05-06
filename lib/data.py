@@ -20,6 +20,13 @@ import streamlit as st
 # us regardless of where Streamlit was launched from.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# Metric names where a HIGHER value means a BETTER outcome. Only GDP works
+# that way — every prosperity score is a *ranking* (1 = best, 167 = worst),
+# so for prosperity metrics a LOWER value is better. Both pages use this set
+# to decide whether "Top N" means nlargest (GDP) or nsmallest (rankings),
+# and to invert color/size scales on maps so bright/big always means "better".
+HIGHER_IS_BETTER = {"gdp_2023"}
+
 # The 12 prosperity dimensions used as predictors in the OLS model.
 # Stored as a tuple so it can be safely shared across pages without mutation.
 PROSPERITY_SCORE_COLS = (
