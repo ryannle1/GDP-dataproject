@@ -32,7 +32,7 @@ References / tools used:
     - statsmodels formula API — OLS with interaction terms.
     - Google Public Data Explorer — country centroid CSV (public domain).
 
-Run locally:  streamlit run app.py (after installing requirements.txt)
+Run locally:  streamlit run Home.py (after installing requirements.txt)
 """
 
 import streamlit as st
