@@ -28,3 +28,6 @@ Thumbs.db
 
 # Deepnote build output (empty by default, regenerated)
 .dist/
+
+# Internal project documentation (kept local, not pushed)
+CLAUDE.md
