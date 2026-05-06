@@ -11,8 +11,8 @@ Tabs on the page (left to right):
     Data        — filtered country table + region × regime mean-GDP pivot
     World Map   — interactive choropleth, color metric chosen inline
     Regression  — scatter plot of selected predictor + OLS summary
-    Insights    — correlation strength chart (Q1), over/under-performers
-                  (Q2), Cook's-distance influence plot
+    Insights    — Q1 correlation strength, Q2 over/under-performers,
+                  Q3 infrastructure × regime effect, Cook's-distance plot
 """
 
 import matplotlib.pyplot as plt
@@ -20,6 +20,7 @@ import pandas as pd
 import plotly.express as px
 import seaborn as sns
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 import streamlit as st
 
 from lib.data import PROSPERITY_SCORE_COLS, build_merged
@@ -292,6 +293,85 @@ with tab_insights:
         "**less**. Large oil exporters and major industrial economies often "
         "appear on either extreme."
     )
+
+    st.divider()
+
+    # -----------------------------------------------------------------------
+    # Q3: does good infrastructure have a bigger GDP effect in democracies
+    # or autocracies? Fits one tiny OLS per regime so the per-regime slopes
+    # are directly comparable, then displays them side-by-side.
+    # -----------------------------------------------------------------------
+    st.subheader("Q3 — Does good infrastructure boost GDP more in democracies or autocracies?")
+
+    regime_slopes = {}
+    for regime in ("Democracy", "Autocracy"):
+        sub = fit_input[fit_input["Regime_Group"] == regime]
+        if len(sub) >= 5:  # need enough rows for a meaningful slope
+            sub_model = smf.ols("gdp_2023 ~ infrastructure_and_market_access", data=sub).fit()
+            regime_slopes[regime] = {
+                "slope": sub_model.params["infrastructure_and_market_access"],
+                "n": int(sub_model.nobs),
+                "r2": sub_model.rsquared,
+            }
+
+    if len(regime_slopes) < 2:
+        st.info(
+            "Need both regimes in the filtered set to compare effects. "
+            "Add the missing regime back via the sidebar filter."
+        )
+    else:
+        # Side-by-side metric cards. Slopes are negative because better-ranked
+        # countries (lower number) have higher GDP — same convention as Q1.
+        # The ratio is what matters.
+        dem_slope = regime_slopes["Democracy"]["slope"]
+        aut_slope = regime_slopes["Autocracy"]["slope"]
+        ratio = dem_slope / aut_slope if aut_slope != 0 else float("nan")
+
+        c_dem, c_aut, c_ratio = st.columns(3)
+        c_dem.metric(
+            "Democracy slope",
+            f"${dem_slope/1e9:+,.2f}B / rank-unit",
+            f"n={regime_slopes['Democracy']['n']}, R²={regime_slopes['Democracy']['r2']:.2f}",
+            delta_color="off",
+        )
+        c_aut.metric(
+            "Autocracy slope",
+            f"${aut_slope/1e9:+,.2f}B / rank-unit",
+            f"n={regime_slopes['Autocracy']['n']}, R²={regime_slopes['Autocracy']['r2']:.2f}",
+            delta_color="off",
+        )
+        c_ratio.metric(
+            "Effect ratio (Dem ÷ Aut)",
+            f"{ratio:.2f}×",
+            "magnitude of infrastructure → GDP relationship",
+            delta_color="off",
+        )
+
+        # Bar chart comparing |slopes| so the magnitudes line up visually
+        # without the negative-rank-direction confusion.
+        fig_q3, ax_q3 = plt.subplots(figsize=(7, 3.5))
+        bar_data = [abs(dem_slope) / 1e9, abs(aut_slope) / 1e9]
+        bar_labels = ["Democracies", "Autocracies"]
+        bar_colors_q3 = ["#2E86AB", "#A4303F"]
+        ax_q3.barh(bar_labels, bar_data, color=bar_colors_q3)
+        ax_q3.set_xlabel("|GDP change per 1 rank-unit improvement| (Billion USD)")
+        ax_q3.set_title("Magnitude of the infrastructure → GDP relationship by regime")
+        for i, v in enumerate(bar_data):
+            ax_q3.text(v, i, f" ${v:,.2f}B", va="center")
+        ax_q3.grid(axis="x", linestyle="--", alpha=0.3)
+        fig_q3.tight_layout()
+        st.pyplot(fig_q3)
+        plt.close(fig_q3)
+
+        bigger = "democracies" if abs(dem_slope) > abs(aut_slope) else "autocracies"
+        st.caption(
+            f"In this dataset, a one-rank improvement in infrastructure access "
+            f"is associated with roughly **{ratio:.1f}×** as much GDP change in "
+            f"democracies as in autocracies — i.e. infrastructure improvements "
+            f"correlate with larger GDP gains in **{bigger}**. The same effect "
+            f"appears as the `infrastructure_and_market_access:Regime_Group` "
+            f"interaction term in the OLS summary on the Regression tab."
+        )
 
     st.divider()
 
