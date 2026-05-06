@@ -31,3 +31,6 @@ Thumbs.db
 
 # Internal project documentation (kept local, not pushed)
 CLAUDE.md
+
+# Dev container config (local IDE setup, not part of the app)
+.devcontainer/
